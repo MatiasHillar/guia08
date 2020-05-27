@@ -1,17 +1,24 @@
 package frsf.isi.died.guia08.problema01.modelo;
 
+import java.text.DateFormat;
+import java.text.Format;
+import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Formatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collector;
-import java.util.stream.Collectors;
 
 import frsf.isi.died.guia08.problema01.excepciones.ExcepcionAsig;
+import frsf.isi.died.guia08.problema01.excepciones.ExcepcionAsignaTarea;
 import frsf.isi.died.guia08.problema01.excepciones.ExcepcionNoExisteTarea;
 
 public class Empleado {
@@ -27,62 +34,28 @@ public class Empleado {
 	private Function<Tarea, Double> calculoPagoPorTarea;		
 	private Predicate<Tarea> puedeAsignarTarea;
 
-	public Empleado(String nombre, Integer cuil) {
+	public Empleado(String nombre, Integer cuil, Tipo tipo, double costo) {
 		this.nombre = nombre;
 		this.cuil = cuil;
-		//implementar toda la logica en el predicate
-		this.puedeAsignarTarea = t -> ( (t.getEmpleadoAsignado() != null && 
-				LocalDateTime.now().isBefore(t.getFechaFin()) &&
-				
-				((t.getEmpleadoAsignado().tipo == Tipo.CONTRATADO &&
-						this.tareasAsignadas.stream()
-						.filter(t1 -> t.getFechaFin().isAfter(LocalDateTime.now()))
-						.count() < 5) 
-				||
-			
-				(t.getEmpleadoAsignado().tipo == Tipo.EFECTIVO &&
-					this.tareasAsignadas.stream()
-					.filter(t1 -> t.getFechaFin().isAfter(LocalDateTime.now()))
-					.mapToInt(t1 -> t.getDuracionEstimada())
-					.sum() < 15))
-				)
-				);
-		
-		this.calculoPagoPorTarea = t -> { switch(this.tipo) {
-		case CONTRATADO: 
-			if(finalizaAntes(t)) return calcularCosto(t)*1.2;
-		else if(finalizaConDemora(t)) return calcularCosto(t)*0.75;
-		else return calcularCosto(t);
-		case EFECTIVO:
-			if(finalizaAntes(t)) return calcularCosto(t)*1.3;
-			else return calcularCosto(t);
-		default: return 0.0;
-				}
-	};
-	}
+		this.tipo = tipo;
+		this.costoHora = costo;
+		this.tareasAsignadas = new ArrayList<Tarea>();
+		configurar();	
+		}
 	
-
 	public Tipo getTipo() {
 		return this.tipo;
 	}
 	
-	public void setTipo(Tipo tipo) {
-		this.tipo = tipo;
+	public List<Tarea> getTareas(){
+		return tareasAsignadas;
 	}
-
-
-	public void setCostoHora(Double costoHora) {
-		this.costoHora = costoHora;
+	
+	
+	public Integer getCuil() {
+		return this.cuil;
 	}
-
-
-	public void setTareasAsignadas(List<Tarea> tareasAsignadas) {
-		this.tareasAsignadas = tareasAsignadas;
-	}
-
-
-
-
+	
 	public Double salario() {
 		return this.tareasAsignadas.stream()
 				.filter(t -> t.getFacturada() == false)
@@ -99,45 +72,23 @@ public class Empleado {
 	 * @return
 	 */
 	public Double costoTarea(Tarea t) {
-		if(LocalDateTime.now().isBefore(t.getFechaFin())) {
+		if(t.getFechaFin() == null) {
 			return t.getDuracionEstimada() * this.costoHora;
 		}
 		else return calculoPagoPorTarea.apply(t);
 	}
 		
-	public Boolean asignarTarea(Tarea t) throws ExcepcionAsig {
-		//Si la tarea ya está asignada o finalizada
-		if(!puedeAsignarTarea.test(t))
-			throw new ExcepcionAsig();
-		
-		Predicate<Tarea> cond = t1 -> t.getFechaFin().isAfter(LocalDateTime.now());
-		switch(this.tipo) {
-		case CONTRATADO:	
-			if (this.tareasAsignadas.stream()
-			.filter(cond)
-			.count() > 5) return false;
-			else {
-				this.tareasAsignadas.add(t);
-				return true;
-			}
-		
-		case EFECTIVO:
-			if(this.tareasAsignadas.stream()
-				.filter(cond)
-				.mapToInt(t1 -> t1.getDuracionEstimada())
-				.sum() > 15) return false;
-			else {
-				this.tareasAsignadas.add(t);
-				return true;
-			}
-	
-		default: return false;
-		}
-		
+	public Boolean asignarTarea(Tarea t) throws ExcepcionAsig, ExcepcionAsignaTarea {
+	if(puedeAsignarTarea.test(t)) {
+			this.tareasAsignadas.add(t);
+			t.asignarEmpleado(this);
+	return true;
+	}
+	else throw new ExcepcionAsig();
 	}
 	
-	public void comenzar(Integer idTarea) throws Exception{
-		Supplier<Exception> S = () -> {return new ExcepcionNoExisteTarea();}; 
+	public void comenzar(Integer idTarea) throws ExcepcionNoExisteTarea{
+		Supplier<ExcepcionNoExisteTarea> S = () -> {return new ExcepcionNoExisteTarea();}; 
 		Optional<Tarea> T = (this.tareasAsignadas.stream()
 				.filter(t -> t.getId() == idTarea)
 				.findFirst());
@@ -145,22 +96,37 @@ public class Empleado {
 		tarea.setFechaInicio(LocalDateTime.now());
 	}
 	
-	public void finalizar(Integer idTarea) {
-		// busca la tarea en la lista de tareas asignadas 
-		// si la tarea no existe lanza una excepción
-		// si la tarea existe indica como fecha de finalizacion la fecha y hora actual
+	public void finalizar(Integer idTarea) throws ExcepcionNoExisteTarea{
+		Supplier<ExcepcionNoExisteTarea> S = () -> {return new ExcepcionNoExisteTarea();}; 
+		Optional<Tarea> T = (this.tareasAsignadas.stream()
+				.filter(t -> t.getId() == idTarea)
+				.findFirst());
+		Tarea tarea = T.orElseThrow(S);
+		tarea.setFechaFin(LocalDateTime.now());
 	}
 
-	public void comenzar(Integer idTarea,String fecha) {
-		// busca la tarea en la lista de tareas asignadas 
-		// si la tarea no existe lanza una excepción
-		// si la tarea existe indica como fecha de finalizacion la fecha y hora actual
+	public void comenzar(Integer idTarea,String fecha) throws ExcepcionNoExisteTarea{
+	String formato = "dd-MM-yyyy HH:mm";
+	DateTimeFormatter df = DateTimeFormatter.ofPattern(formato);
+	LocalDateTime fechaInicio = LocalDateTime.parse(fecha, df);
+		Supplier<ExcepcionNoExisteTarea> S = () -> {return new ExcepcionNoExisteTarea();}; 
+		Optional<Tarea> T = (this.tareasAsignadas.stream()
+				.filter(t -> t.getId() == idTarea)
+				.findFirst());
+		Tarea tarea = T.orElseThrow(S);
+		tarea.setFechaInicio(fechaInicio);
 	}
 	
-	public void finalizar(Integer idTarea,String fecha) {
-		// busca la tarea en la lista de tareas asignadas 
-		// si la tarea no existe lanza una excepción
-		// si la tarea existe indica como fecha de finalizacion la fecha y hora actual
+	public void finalizar(Integer idTarea,String fecha) throws ExcepcionNoExisteTarea{
+		String formato = "dd-MM-yyyy HH:mm";
+		DateTimeFormatter df = DateTimeFormatter.ofPattern(formato);
+		LocalDateTime fechaFin = LocalDateTime.parse(fecha, df);
+		Supplier<ExcepcionNoExisteTarea> S = () -> {return new ExcepcionNoExisteTarea();}; 
+		Optional<Tarea> T = (this.tareasAsignadas.stream()
+				.filter(t -> t.getId() == idTarea)
+				.findFirst());
+		Tarea tarea = T.orElseThrow(S);
+		tarea.setFechaFin(fechaFin);
 	}
 	public double calcularCosto(Tarea t) {
 		return t.getDuracionEstimada()*this.costoHora;
@@ -175,4 +141,32 @@ public class Empleado {
 		if((duracion - t.getDuracionEstimada()) >= 8) return true;
 		else return false;
 	}
+	@Override
+	public String toString() {	
+	return this.nombre;
+	}
+	
+	public void configurar() {
+		switch(tipo){
+		case CONTRATADO:
+			this.puedeAsignarTarea = t -> ((int) this.tareasAsignadas.stream()
+				.filter(t1 -> t.getFechaFin() == null)
+				.count() <= 5);
+			this.calculoPagoPorTarea = t -> {if(finalizaAntes(t))
+				return calcularCosto(t)*1.2;
+				else if(finalizaConDemora(t))
+				return calcularCosto(t)*0.75;
+				else return calcularCosto(t);};
+			break;
+		case EFECTIVO:
+			this.puedeAsignarTarea = t -> ( (int) this.tareasAsignadas.stream()
+				.filter(t1 -> t.getFechaFin() == null)
+				.mapToInt(t1 -> t.getDuracionEstimada())
+				.sum() <= 15);
+			this.calculoPagoPorTarea = t -> {if(finalizaAntes(t))
+				return calcularCosto(t)*1.3;
+				else return calcularCosto(t);};
+			break;
+	}
 }
+	}

@@ -2,6 +2,9 @@ package frsf.isi.died.guia08.problema01.modelo;
 
 import java.time.LocalDateTime;
 
+import frsf.isi.died.guia08.problema01.excepciones.ExcepcionAsig;
+import frsf.isi.died.guia08.problema01.excepciones.ExcepcionAsignaTarea;
+
 public class Tarea {
 
 	private Integer id;
@@ -12,9 +15,17 @@ public class Tarea {
 	private LocalDateTime fechaFin;
 	private Boolean facturada;
 	
-	public void asignarEmpleado(Empleado e) {
-		// si la tarea ya tiene un empleado asignado
-		// y tiene fecha de finalizado debe lanzar una excepcion
+	public Tarea(Integer id, String descripcion, Integer duracion) {		
+	this.id = id;
+	this.descripcion = descripcion;
+	this.duracionEstimada = duracion;
+	this.facturada = false;
+	}
+	
+	public void asignarEmpleado(Empleado e) throws ExcepcionAsignaTarea, ExcepcionAsig{
+		if(this.empleadoAsignado != null && this.fechaFin != null)
+			throw new ExcepcionAsignaTarea();
+		else this.setEmpleadoAsignado(e);
 	}
 
 	public Integer getId() {
@@ -67,6 +78,16 @@ public class Tarea {
 
 	public Empleado getEmpleadoAsignado() {
 		return empleadoAsignado;
+	}
+	
+	public void setEmpleadoAsignado(Empleado e) {
+		this.empleadoAsignado = e;
+	}
+	
+	@Override
+	public String toString() {
+		if(this.fechaFin == null) return "null";
+		return this.getFechaFin().toString();
 	}
 	
 	
