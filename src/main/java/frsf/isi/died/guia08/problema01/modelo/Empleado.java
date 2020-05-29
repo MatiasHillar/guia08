@@ -143,7 +143,7 @@ public class Empleado {
 	}
 	@Override
 	public String toString() {	
-	return this.nombre;
+	return nombre+" "+cuil+" "+tipo+" "+costoHora;
 	}
 	
 	public void configurar() {
@@ -169,4 +169,5 @@ public class Empleado {
 			break;
 	}
 }
+	
 	}

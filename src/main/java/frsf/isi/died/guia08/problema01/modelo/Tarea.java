@@ -90,5 +90,8 @@ public class Tarea {
 		return this.getFechaFin().toString();
 	}
 	
+	public String asCsv() {
+		return id+";"+descripcion+";"+duracionEstimada+";"+getEmpleadoAsignado().getCuil();
+	}
 	
 }

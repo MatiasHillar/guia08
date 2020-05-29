@@ -1,5 +1,4 @@
-package frsf.isi.died.guia08.problema01;
-
+package frsf.isi.died.guia08.problema01.excepciones;
 public class ExcepcionYaExisteEmpleado extends Exception {
 
 	public ExcepcionYaExisteEmpleado() {

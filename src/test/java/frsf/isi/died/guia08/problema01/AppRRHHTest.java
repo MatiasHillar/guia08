@@ -2,6 +2,8 @@ package frsf.isi.died.guia08.problema01;
 
 import static org.junit.Assert.*;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Optional;
 import java.util.function.Predicate;
 
@@ -11,6 +13,7 @@ import org.junit.Test;
 import frsf.isi.died.guia08.problema01.excepciones.ExcepcionAsig;
 import frsf.isi.died.guia08.problema01.excepciones.ExcepcionAsignaTarea;
 import frsf.isi.died.guia08.problema01.excepciones.ExcepcionNoExisteTarea;
+import frsf.isi.died.guia08.problema01.excepciones.ExcepcionYaExisteEmpleado;
 import frsf.isi.died.guia08.problema01.modelo.Empleado;
 import frsf.isi.died.guia08.problema01.modelo.Empleado.Tipo;
 import frsf.isi.died.guia08.problema01.modelo.Tarea;
@@ -96,11 +99,11 @@ public class AppRRHHTest {
 		e2.finalizar(t3.getId());
 		e2.finalizar(t4.getId());
 		e2.finalizar(t5.getId());
-		for(int i =0; i<e2.getTareas().size(); i++)
+		/*for(int i =0; i<e2.getTareas().size(); i++)
 		System.out.println(e2.getTareas().get(i).toString());
 		System.out.println(e2.getTareas().stream()
 				.filter(t1 -> t1.getFechaFin() == null)
-				.count());
+				.count());*/
 		//No comprendo porqué se lanza la excepcion correspondiente
 		//al caso en que el predicado "puedeAsignarTarea" falla.
 		//Debería lanzar la excepcion del método asignarEmpleado de Tarea.
@@ -113,13 +116,14 @@ public class AppRRHHTest {
 		app.empezarTarea(e1.getCuil(), t1.getId());
 	}
 	
-	/*@Test
+	@Test
 	public void empezarTareaTestFails() {
 		//En la clase AppRRHH capturo la excepcion e imprimo el mensaje con el
-		//stack trace. Debería entonces no testear este caso?
-		assertThrows(ExcepcionYaExisteEmpleado.class,
-				() -> app.empezarTarea(11111111, t1.getId()));
-	}*/
+		//stack trace. Debería entonces no testear este caso, o no capturar
+		//las excepciones en AppRRHH y sólo lanzarlas?
+		//assertThrows(ExcepcionYaExisteEmpleado.class,
+			//	() -> app.empezarTarea(11111111, t1.getId()));
+	}
 	
 	@Test
 	public void terminarTareaTest() throws ExcepcionYaExisteEmpleado {
@@ -128,10 +132,23 @@ public class AppRRHHTest {
 		app.terminarTarea(e1.getCuil(), t1.getId());
 	}
 	
-	/*@Test
+	@Test
 	public void terminarTareaTestFails() {
 		//Idem empezarTareaTestFails
-		assertThrows(ExcepcionYaExisteEmpleado.class,
-				() -> app.terminarTarea(11111111, t1.getId()));
-	}*/
-}
+		//assertThrows(ExcepcionYaExisteEmpleado.class,
+			//	() -> app.terminarTarea(11111111, t1.getId()));
+	}
+	
+	@Test
+	public void cargarEmpleadoContratadoCSVTest() throws FileNotFoundException, IOException {
+		
+				app.cargarEmpleadosContratadosCSV("./target/empleados.csv");
+			System.out.println(app.getEmpleados());
+		}
+		
+	@Test
+	public void guardarTareasTerminadasCSVTest() throws IOException {
+		app.guardarTareasTerminadasCSV();
+	}
+	}
+
